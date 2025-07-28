@@ -1,11 +1,8 @@
-// pvgis.js – تصحيح جلب البيانات مباشرة من المتصفح
-// ------------------------------------------------------------------
-// يُستدعى من script.js عبر getPVGISData(lat, lon)
 
-const PROXY = 'https://cors-anywhere.herokuapp.com/'; // يمكنك استبداله بأي proxy CORS صالح
+// pvgis.js – تصحيح جلب البيانات من PVGIS مع proxy
+const PROXY = 'https://cors-anywhere.herokuapp.com/';
 const BASE = 'https://re.jrc.ec.europa.eu/api/v5_3/';
 
-// دالة رئيسية
 export async function getPVGISData(lat, lon) {
   const urls = [
     ${BASE}seriescalc?lat=${lat}&lon=${lon}&startyear=2020&endyear=2020&outputformat=json&daily=1,
@@ -30,8 +27,10 @@ export async function getPVGISData(lat, lon) {
         source = 'monthly';
       } else continue;
 
-      // مفتاح الإشعاع (H(h)_d أو G(h)_d أو G(i)_d ...)
-      const key = Object.keys(arr[0]).find(k => /G $i$_d|G $h$_d|H $h$_d/i.test(k));
+      // مفتاح الإشعاع الصحيح
+      const key = Object.keys(arr[0]).find(k =>
+        /G\(i\)_d|G\(h\)_d|H\(h\)_d/i.test(k)
+      );
       if (!key) continue;
 
       const total = arr.reduce((sum, d) => sum + (parseFloat(d[key]) || 0), 0);
@@ -43,10 +42,8 @@ export async function getPVGISData(lat, lon) {
     }
   }
 
-  // Fallback: قيمة افتراضية
   return { source: 'default', avgIrr: 5.0 };
 }
 
-// لأننا نستخدم ES Module، نحتاج إلى تعريفها عالميًا إذا لم تكن تستخدم Webpack/vite
-// (للتوافق مع <script type="module">)
+// إتاحته كدالة عالمية إذا كنت تستخدم <script type="module">
 window.getPVGISData = getPVGISData;
