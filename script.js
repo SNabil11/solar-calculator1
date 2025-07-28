@@ -1,25 +1,29 @@
-// script.js – نسخة محسَّنة ومصحَّحة
-// ----------------------------------------------------------
-// متغيّرات عامة
 let map;
 let selectedLatLng = null;
 let marker = null;
 
 // عند تحميل الصفحة
 window.addEventListener('DOMContentLoaded', () => {
-  initMap();
-  setupModeSwitching();
+  setTimeout(() => {
+    const mapContainer = document.getElementById('map');
+    if (mapContainer) {
+      initMap();
+      setupModeSwitching();
+    } else {
+      console.warn('عنصر الخريطة غير موجود!');
+    }
+  }, 100); // تأخير بسيط لضمان تحميل العنصر
 });
 
 // تهيئة الخريطة
 function initMap() {
-  map = L.map('map').setView([28, 2], 6); // الجزائر افتراضيًا
+  map = L.map('map').setView([28, 2], 6);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  // عند النقر على الخريطة
+  // حدث النقر على الخريطة
   map.on('click', async (e) => {
     selectedLatLng = e.latlng;
 
@@ -32,15 +36,14 @@ function initMap() {
     document.getElementById('selectedLocation').innerText =
       📍 ${selectedLatLng.lat.toFixed(4)}, ${selectedLatLng.lng.toFixed(4)};
 
-    // جلب الإشعاع من pvgis.js (frontend proxy)
     await fetchIrradiation(selectedLatLng.lat, selectedLatLng.lng);
   });
 }
 
-// جلب الإشعاع من واجهة pvgis (frontend)
+// جلب بيانات الإشعاع
 async function fetchIrradiation(lat, lon) {
   try {
-    const data = await getPVGISData(lat, lon); // من pvgis.js
+    const data = await getPVGISData(lat, lon); // يجب أن تكون موجودة في pvgis.js
     if (!data) throw new Error('لا توجد بيانات');
 
     const { source, avgIrr } = data;
@@ -48,12 +51,15 @@ async function fetchIrradiation(lat, lon) {
       ☀️ ${avgIrr} kWh/m² (${source});
     document.getElementById('irradiationValue').dataset.value = avgIrr;
   } catch (err) {
-    console.error(err);
+    console.error('❌ خطأ أثناء جلب بيانات الإشعاع:', err);
     document.getElementById('irradiationValue').innerText =
       '⚠️ تعذّر جلب البيانات، حاول مجددًا';
-    document.getElementById('irradiationValue').dataset.value = 5; // قيمة افتراضية
+    document.getElementById('irradiationValue').dataset.value = 5;
   }
 }
+
+// وظائف الأجهزة وإدخال الاستهلاك كما هي بدون تغيير
+// ...
 
 // إضافة جهاز جديد
 function addDevice() {
