@@ -17,46 +17,45 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // تهيئة الخريطة
 function initMap() {
-  map = L.map('map').setView([28, 2], 6);
+  const map = L.map("map").setView([34, 3], 5); // موقع الجزائر الافتراضي
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+  // بلاط OpenStreetMap
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: '© OpenStreetMap contributors'
   }).addTo(map);
 
-  // حدث النقر على الخريطة
-  map.on('click', async (e) => {
-    selectedLatLng = e.latlng;
+  let marker;
 
+  map.on("click", function (e) {
+    const { lat, lng } = e.latlng;
+
+    // إضافة أو تحريك العلامة
     if (marker) {
-      marker.setLatLng(selectedLatLng);
+      marker.setLatLng([lat, lng]);
     } else {
-      marker = L.marker(selectedLatLng).addTo(map);
+      marker = L.marker([lat, lng]).addTo(map);
     }
 
-    document.getElementById('selectedLocation').innerText =
-      📍 ${selectedLatLng.lat.toFixed(4)}, ${selectedLatLng.lng.toFixed(4)};
+    // عرض الإحداثيات
+    document.getElementById("selectedLocation").textContent =
+      📍 خط العرض: ${lat.toFixed(4)}, خط الطول: ${lng.toFixed(4)};
 
-    await fetchIrradiation(selectedLatLng.lat, selectedLatLng.lng);
+    // جلب الإشعاع الشمسي من PVGIS
+    if (typeof fetchIrradiation === "function") {
+      fetchIrradiation(lat, lng);
+    }
   });
-}
 
-// جلب بيانات الإشعاع
-async function fetchIrradiation(lat, lon) {
-  try {
-    const data = await getPVGISData(lat, lon); // يجب أن تكون موجودة في pvgis.js
-    if (!data) throw new Error('لا توجد بيانات');
-
-    const { source, avgIrr } = data;
-    document.getElementById('irradiationValue').innerText =
-      ☀️ ${avgIrr} kWh/m² (${source});
-    document.getElementById('irradiationValue').dataset.value = avgIrr;
-  } catch (err) {
-    console.error('❌ خطأ أثناء جلب بيانات الإشعاع:', err);
-    document.getElementById('irradiationValue').innerText =
-      '⚠️ تعذّر جلب البيانات، حاول مجددًا';
-    document.getElementById('irradiationValue').dataset.value = 5;
-  }
-}
+  // تبديل بين الإدخال المباشر وإدخال الأجهزة
+  document.querySelectorAll('input[name="inputMode"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      const mode = document.querySelector('input[name="inputMode"]:checked').value;
+      document.getElementById("directInputs").classList.toggle("hide", mode !== "direct");
+      document.getElementById("deviceInputs").classList.toggle("hide", mode !== "devices");
+    });
+  });
+});
 
 // وظائف الأجهزة وإدخال الاستهلاك كما هي بدون تغيير
 // ...
