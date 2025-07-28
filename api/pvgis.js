@@ -1,34 +1,52 @@
-export default async function handler(req, res) {
-  const { lat, lon } = req.query;
+// pvgis.js – تصحيح جلب البيانات مباشرة من المتصفح
+// ------------------------------------------------------------------
+// يُستدعى من script.js عبر getPVGISData(lat, lon)
 
-  if (!lat || !lon) {
-    return res.status(400).json({ error: 'Missing coordinates' });
+const PROXY = 'https://cors-anywhere.herokuapp.com/'; // يمكنك استبداله بأي proxy CORS صالح
+const BASE = 'https://re.jrc.ec.europa.eu/api/v5_3/';
+
+// دالة رئيسية
+export async function getPVGISData(lat, lon) {
+  const urls = [
+    ${BASE}seriescalc?lat=${lat}&lon=${lon}&startyear=2020&endyear=2020&outputformat=json&daily=1,
+    ${BASE}monthlycalc?lat=${lat}&lon=${lon}&outputformat=json
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(PROXY + url);
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const daily = data.outputs?.daily;
+      const monthly = data.outputs?.monthly;
+
+      let arr, source;
+      if (daily && daily.length) {
+        arr = daily;
+        source = 'daily';
+      } else if (monthly && monthly.length) {
+        arr = monthly;
+        source = 'monthly';
+      } else continue;
+
+      // مفتاح الإشعاع (H(h)_d أو G(h)_d أو G(i)_d ...)
+      const key = Object.keys(arr[0]).find(k => /G $i$_d|G $h$_d|H $h$_d/i.test(k));
+      if (!key) continue;
+
+      const total = arr.reduce((sum, d) => sum + (parseFloat(d[key]) || 0), 0);
+      const avgIrr = (total / arr.length).toFixed(2);
+
+      return { source, avgIrr };
+    } catch (e) {
+      console.warn('فشل جلب البيانات من: ' + url, e);
+    }
   }
 
-  const baseURL = "https://re.jrc.ec.europa.eu/api/v5_3/";
-  const urlDaily = `${baseURL}seriescalc?lat=${lat}&lon=${lon}&startyear=2020&endyear=2020&outputformat=json&browser=0&usehorizon=1&pvcalculation=0&daily=1`;
-  const urlMonthly = `${baseURL}monthlycalc?lat=${lat}&lon=${lon}&outputformat=json&browser=0&usehorizon=1&pvtechchoice=crystSi`;
-
-  try {
-    // تجربة جلب البيانات اليومية أولاً
-    let response = await fetch(urlDaily);
-    let data = await response.json();
-
-    if (data.outputs?.daily?.length > 0) {
-      return res.status(200).json({ source: "daily", outputs: data.outputs });
-    }
-
-    // إذا فشلت اليومية، تجربة الشهرية
-    response = await fetch(urlMonthly);
-    data = await response.json();
-
-    if (data.outputs?.monthly?.length > 0) {
-      return res.status(200).json({ source: "monthly", outputs: data.outputs });
-    }
-
-    return res.status(404).json({ error: "No irradiation data found in both daily and monthly formats." });
-
-  } catch (error) {
-    return res.status(500).json({ error: 'Error fetching PVGIS data', details: error.message });
-  }
+  // Fallback: قيمة افتراضية
+  return { source: 'default', avgIrr: 5.0 };
 }
+
+// لأننا نستخدم ES Module، نحتاج إلى تعريفها عالميًا إذا لم تكن تستخدم Webpack/vite
+// (للتوافق مع <script type="module">)
+window.getPVGISData = getPVGISData;
