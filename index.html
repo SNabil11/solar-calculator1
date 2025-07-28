@@ -1,13 +1,111 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>حاسبة الطاقة الشمسية</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Cairo&display=swap" rel="stylesheet">
+
+  <!-- خطوط وأيقونات -->
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- ستايل Leaflet للخريطة -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-o9N1j7kChtyEyC1zFhVFz+zt1nFN93fbgG1zRM3wJNc=" crossorigin=""/>
+
   <style>
-    /* ...نفس الستايل كما أرسلته... */
+    body {
+      font-family: 'Cairo', sans-serif;
+      background-color: #f2f2f2;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+
+    .main-container {
+      max-width: 700px;
+      margin: auto;
+      padding: 20px;
+      background-color: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      background-color: #2e86de;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background-color: #2163af;
+    }
+
+    #devicesTable {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+    }
+
+    #devicesTable th, #devicesTable td {
+      padding: 5px;
+      border: 1px solid #ddd;
+    }
+
+    .map-container {
+      max-width: 700px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #map {
+      height: 300px;
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    #results {
+      background-color: #e9f7ef;
+      padding: 15px;
+      margin-top: 15px;
+      border-radius: 8px;
+      border: 1px solid #a9dfbf;
+    }
+
+    h2, h4 {
+      color: #1e8449;
+    }
+
+    @media (max-width: 768px) {
+      .main-container, .map-container {
+        margin: 10px;
+        padding: 15px;
+      }
+
+      button {
+        width: 100%;
+        margin-top: 10px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -19,8 +117,11 @@
     <label><input type="radio" name="inputMode" value="devices"> إدخال حسب الأجهزة</label>
 
     <div id="directInputs">
-      <label>الاستهلاك اليومي (kWh): <input type="number" id="dailyUsage"></label>
-      <label>أو الاستهلاك الشهري (kWh): <input type="number" id="monthlyUsage"></label>
+      <label>الاستهلاك اليومي (kWh):</label>
+      <input type="number" id="dailyUsage" placeholder="مثال: 10">
+
+      <label>أو الاستهلاك الشهري (kWh):</label>
+      <input type="number" id="monthlyUsage" placeholder="مثال: 300">
     </div>
 
     <div id="deviceInputs" style="display: none;">
@@ -43,7 +144,8 @@
 
     <hr>
 
-    <label>🔋 جهد النظام (V): <input type="number" id="systemVoltage" value="24"></label>
+    <label>🔋 جهد النظام (V):</label>
+    <input type="number" id="systemVoltage" value="24">
 
     <label>🔌 مواصفات اللوح الشمسي:</label>
     <input type="number" id="panelWatt" placeholder="القدرة (W)" value="300">
@@ -69,7 +171,10 @@
     <div id="map"></div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <!-- خريطة leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j7kChtyEyC1zFhVFz+zt1nFN93fbgG1zRM3wJNc=" crossorigin=""></script>
+
+  <!-- سكريبتك الأساسي -->
   <script src="script.js"></script>
 
 </body>
