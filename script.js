@@ -1,20 +1,26 @@
+// script.js – نسخة محسَّنة ومصحَّحة
+// ----------------------------------------------------------
+// متغيّرات عامة
 let map;
 let selectedLatLng = null;
 let marker = null;
 
-window.addEventListener("load", () => {
+// عند تحميل الصفحة
+window.addEventListener('DOMContentLoaded', () => {
   initMap();
   setupModeSwitching();
 });
 
+// تهيئة الخريطة
 function initMap() {
-  map = L.map('map').setView([28, 2], 6); // الجزائر
+  map = L.map('map').setView([28, 2], 6); // الجزائر افتراضيًا
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  map.on('click', async function (e) {
+  // عند النقر على الخريطة
+  map.on('click', async (e) => {
     selectedLatLng = e.latlng;
 
     if (marker) {
@@ -24,94 +30,95 @@ function initMap() {
     }
 
     document.getElementById('selectedLocation').innerText =
-      `📍 الإحداثيات: ${selectedLatLng.lat.toFixed(4)}, ${selectedLatLng.lng.toFixed(4)}`;
+      📍 ${selectedLatLng.lat.toFixed(4)}, ${selectedLatLng.lng.toFixed(4)};
 
-    await getIrradiation(selectedLatLng.lat, selectedLatLng.lng);
+    // جلب الإشعاع من pvgis.js (frontend proxy)
+    await fetchIrradiation(selectedLatLng.lat, selectedLatLng.lng);
   });
 }
 
-async function getIrradiation(lat, lon) {
-  const url = `/api/pvgis?lat=${lat}&lon=${lon}`;
+// جلب الإشعاع من واجهة pvgis (frontend)
+async function fetchIrradiation(lat, lon) {
   try {
-    const res = await fetch(url);
-    const data = await res.json();
+    const data = await getPVGISData(lat, lon); // من pvgis.js
+    if (!data) throw new Error('لا توجد بيانات');
 
-    const dailyData = data.outputs?.daily;
-    if (!dailyData || dailyData.length === 0) {
-      document.getElementById("irradiationValue").innerText = "❌ لم يتم العثور على بيانات الإشعاع.";
-      return;
-    }
-
-    const sample = dailyData[0];
-    const irradiationKey = Object.keys(sample).find(k => k.toLowerCase().includes('g'));
-
-    if (!irradiationKey) {
-      document.getElementById("irradiationValue").innerText = "❌ لا توجد بيانات إشعاع صالحة.";
-      return;
-    }
-
-    const total = dailyData.reduce((sum, d) => sum + (parseFloat(d[irradiationKey]) || 0), 0);
-    const averageIrradiation = (total / dailyData.length).toFixed(2);
-
-    document.getElementById("irradiationValue").innerText =
-      `☀️ الإشعاع الشمسي: ${averageIrradiation} kWh/m²`;
-    document.getElementById("irradiationValue").dataset.value = averageIrradiation;
+    const { source, avgIrr } = data;
+    document.getElementById('irradiationValue').innerText =
+      ☀️ ${avgIrr} kWh/m² (${source});
+    document.getElementById('irradiationValue').dataset.value = avgIrr;
   } catch (err) {
     console.error(err);
-    document.getElementById("irradiationValue").innerText = "⚠️ حدث خطأ أثناء جلب بيانات الإشعاع.";
+    document.getElementById('irradiationValue').innerText =
+      '⚠️ تعذّر جلب البيانات، حاول مجددًا';
+    document.getElementById('irradiationValue').dataset.value = 5; // قيمة افتراضية
   }
 }
 
+// إضافة جهاز جديد
 function addDevice() {
-  const table = document.getElementById("devicesTable");
-  const row = table.insertRow();
-  row.innerHTML = `
-    <td><input type="text" placeholder="جهاز"></td>
-    <td><input type="number" placeholder="واط"></td>
-    <td><input type="number" placeholder="ساعات"></td>
-    <td><input type="number" placeholder="عدد"></td>
-  `;
+  const tbody = document.querySelector('#devicesTable tbody');
+  const row = tbody.insertRow();
+  row.innerHTML = 
+    <td><input type="text" placeholder="جهاز" /></td>
+    <td><input type="number" placeholder="واط" min="1" /></td>
+    <td><input type="number" placeholder="ساعات" min="0" /></td>
+    <td><input type="number" placeholder="عدد" min="1" /></td>
+    <td><button type="button" onclick="removeDevice(this)">❌</button></td>
+  ;
 }
 
+// حذف جهاز
+function removeDevice(btn) {
+  btn.closest('tr').remove();
+}
+
+// تبديل طريقة الإدخال
 function setupModeSwitching() {
-  document.querySelectorAll("input[name='inputMode']").forEach(el => {
-    el.addEventListener("change", () => {
-      const mode = document.querySelector("input[name='inputMode']:checked").value;
-      document.getElementById("directInputs").style.display = mode === "direct" ? "block" : "none";
-      document.getElementById("deviceInputs").style.display = mode === "devices" ? "block" : "none";
-    });
-  });
+  const radios = document.querySelectorAll('input[name="inputMode"]');
+  radios.forEach((r) =>
+    r.addEventListener('change', () => {
+      const mode = r.value;
+      document.getElementById('directInputs').classList.toggle('hide', mode !== 'direct');
+      document.getElementById('deviceInputs').classList.toggle('hide', mode !== 'devices');
+    })
+  );
 }
 
+// حساب النظام
 function calculate() {
   let energy = 0;
-  const mode = document.querySelector("input[name='inputMode']:checked").value;
+  const mode = document.querySelector('input[name="inputMode"]:checked').value;
 
-  if (mode === "direct") {
-    const daily = parseFloat(document.getElementById("dailyUsage").value);
-    const monthly = parseFloat(document.getElementById("monthlyUsage").value);
+  // حساب الاستهلاك
+  if (mode === 'direct') {
+    const daily = parseFloat(document.getElementById('dailyUsage').value);
+    const monthly = parseFloat(document.getElementById('monthlyUsage').value);
     energy = daily || (monthly ? monthly / 30 : 0);
   } else {
-    const rows = document.querySelectorAll("#devicesTable tr:not(:first-child)");
-    rows.forEach(row => {
-      const watt = parseFloat(row.cells[1].children[0].value);
-      const hours = parseFloat(row.cells[2].children[0].value);
-      const count = parseFloat(row.cells[3].children[0].value);
-      if (watt && hours && count) {
-        energy += (watt * hours * count) / 1000;
-      }
+    document.querySelectorAll('#devicesTable tbody tr').forEach((row) => {
+      const watt = parseFloat(row.children[1].children[0].value) || 0;
+      const hours = parseFloat(row.children[2].children[0].value) || 0;
+      const count = parseFloat(row.children[3].children[0].value) || 0;
+      energy += (watt * hours * count) / 1000;
     });
   }
 
-  const irradiation = parseFloat(document.getElementById("irradiationValue").dataset.value) || 5;
-  const systemVoltage = parseFloat(document.getElementById("systemVoltage").value) || 12;
+  if (energy <= 0) {
+    alert('يرجى إدخال استهلاك صالح!');
+    return;
+  }
 
-  const panelWatt = parseFloat(document.getElementById("panelWatt").value);
-  const panelVoltage = parseFloat(document.getElementById("panelVoltage").value);
+  // قيم النظام
+  const irradiation = parseFloat(document.getElementById('irradiationValue').dataset.value) || 5;
+  const systemVoltage = parseFloat(document.getElementById('systemVoltage').value) || 24;
 
-  const batteryCapacity = parseFloat(document.getElementById("batteryCapacity").value);
-  const batteryVoltage = parseFloat(document.getElementById("batteryVoltage").value);
+  const panelWatt = parseFloat(document.getElementById('panelWatt').value) || 300;
+  const panelVoltage = parseFloat(document.getElementById('panelVoltage').value) || 18;
 
+  const batteryCapacity = parseFloat(document.getElementById('batteryCapacity').value) || 200;
+  const batteryVoltage = parseFloat(document.getElementById('batteryVoltage').value) || 12;
+  // الحسابات
   const requiredPanels = Math.ceil((energy * 1000) / (irradiation * panelWatt));
   const panelsSeries = Math.ceil(systemVoltage / panelVoltage);
   const panelsParallel = Math.ceil(requiredPanels / panelsSeries);
@@ -122,12 +129,15 @@ function calculate() {
   const batteriesSeries = Math.ceil(systemVoltage / batteryVoltage);
   const batteriesParallel = Math.ceil(requiredBatteries / batteriesSeries);
 
-  document.getElementById("results").innerHTML = `
-    🔋 الاستهلاك اليومي: ${energy.toFixed(2)} kWh<br>
-    ☀️ الإشعاع الشمسي: ${irradiation} kWh/m²<br>
-    🔆 عدد الألواح المطلوبة: ${requiredPanels}<br>
-    🔌 توزيع الألواح: ${panelsSeries} على التسلسل × ${panelsParallel} على التفرع<br>
-    🔋 عدد البطاريات المطلوبة: ${requiredBatteries}<br>
-    🔌 توزيع البطاريات: ${batteriesSeries} على التسلسل × ${batteriesParallel} على التفرع
-  `;
+  // عرض النتائج
+  const resultsDiv = document.getElementById('results');
+  resultsDiv.innerHTML = 
+    🔋 الاستهلاك اليومي: <strong>${energy.toFixed(2)} kWh</strong><br>
+    ☀️ الإشعاع الشمسي: <strong>${irradiation} kWh/m²</strong><br>
+    🔆 عدد الألواح الكلي: <strong>${requiredPanels}</strong><br>
+    🔌 توزيع الألواح: <strong>${panelsSeries}</strong> على التسلسل × <strong>${panelsParallel}</strong> على التفرع<br>
+    🔋 عدد البطاريات الكلي: <strong>${requiredBatteries}</strong><br>
+    🔌 توزيع البطاريات: <strong>${batteriesSeries}</strong> على التسلسل × <strong>${batteriesParallel}</strong> على التفرع
+  ;
+  resultsDiv.classList.remove('hide');
 }
