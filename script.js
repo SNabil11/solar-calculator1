@@ -17,7 +17,8 @@ map.on('click', async function (e) {
 });
 
 async function getIrradiation(lat, lon) {
-  const url = `https://re.jrc.ec.europa.eu/api/v5_2/series?lat=${lat}&lon=${lon}&outputformat=json&startyear=2020&endyear=2020&optimalangles=1`;
+  const url = `/api/pvgis?lat=${lat}&lon=${lon}`;
+
 
   try {
     const res = await fetch(url);
