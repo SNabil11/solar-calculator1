@@ -19,7 +19,6 @@ map.on('click', async function (e) {
 async function getIrradiation(lat, lon) {
   const url = `/api/pvgis?lat=${lat}&lon=${lon}`;
 
-
   try {
     const res = await fetch(url);
     const data = await res.json();
@@ -30,8 +29,16 @@ async function getIrradiation(lat, lon) {
       return;
     }
 
-    // حساب المتوسط اليومي للإشعاع
-    const total = dailyData.reduce((sum, d) => sum + (d.G(i) || 0), 0);
+    // ابحث عن الحقل الصحيح داخل العنصر الأول
+    const sample = dailyData[0];
+    const irradiationKey = Object.keys(sample).find(k => k.toLowerCase().includes('g'));
+
+    if (!irradiationKey) {
+      document.getElementById("irradiationValue").innerText = "❌ لا توجد بيانات إشعاع صالحة.";
+      return;
+    }
+
+    const total = dailyData.reduce((sum, d) => sum + (parseFloat(d[irradiationKey]) || 0), 0);
     const averageIrradiation = (total / dailyData.length).toFixed(2);
     document.getElementById("irradiationValue").innerText = `☀️ الإشعاع الشمسي: ${averageIrradiation} kWh/m²`;
     document.getElementById("irradiationValue").dataset.value = averageIrradiation;
@@ -40,6 +47,7 @@ async function getIrradiation(lat, lon) {
     document.getElementById("irradiationValue").innerText = "⚠️ حدث خطأ أثناء جلب بيانات الإشعاع.";
   }
 }
+
 
 function addDevice() {
   const table = document.getElementById("devicesTable");
