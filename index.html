@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>حاسبة الطاقة الشمسية</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+      direction: rtl;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      background-color: #f9f9f9;
+    }
+
+    .main-container {
+      flex: 3;
+      padding: 30px;
+      background-color: #fff;
+    }
+
+    .map-container {
+      flex: 1;
+      padding: 20px;
+      background-color: #f1f1f1;
+      border-right: 1px solid #ddd;
+    }
+
+    h2, h4 {
+      color: #0077aa;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 10px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+
+    #map {
+      height: 300px;
+      width: 100%;
+      margin-top: 10px;
+      border-radius: 10px;
+    }
+
+    #results {
+      background-color: #e6f7ff;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 10px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 15px;
+      background-color: #0077aa;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #005f88;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="main-container">
+    <h2>🔆 حاسبة الطاقة الشمسية</h2>
+
+    <label><input type="radio" name="inputMode" value="direct" checked> إدخال مباشر للاستهلاك</label>
+    <label><input type="radio" name="inputMode" value="devices"> إدخال حسب الأجهزة</label>
+
+    <div id="directInputs">
+      <label>الاستهلاك اليومي (kWh): <input type="number" id="dailyUsage"></label>
+      <label>أو الاستهلاك الشهري (kWh): <input type="number" id="monthlyUsage"></label>
+    </div>
+
+    <div id="deviceInputs" style="display: none;">
+      <table id="devicesTable">
+        <tr>
+          <th>الجهاز</th>
+          <th>القدرة (W)</th>
+          <th>عدد الساعات</th>
+          <th>العدد</th>
+        </tr>
+        <tr>
+          <td><input type="text" placeholder="ثلاجة"></td>
+          <td><input type="number"></td>
+          <td><input type="number"></td>
+          <td><input type="number"></td>
+        </tr>
+      </table>
+      <button onclick="addDevice()">➕ أضف جهاز</button>
+    </div>
+
+    <hr>
+
+    <label>🔋 جهد النظام (V): <input type="number" id="systemVoltage" value="24"></label>
+
+    <label>🔌 مواصفات اللوح الشمسي:</label>
+    <input type="number" id="panelWatt" placeholder="القدرة (W)" value="300">
+    <input type="number" id="panelVoltage" placeholder="الجهد (V)" value="18">
+    <input type="number" id="panelPrice" placeholder="السعر (DA)" value="150">
+
+    <label>🔋 مواصفات البطارية:</label>
+    <input type="number" id="batteryCapacity" placeholder="السعة (Ah)" value="200">
+    <input type="number" id="batteryVoltage" placeholder="الجهد (V)" value="12">
+    <input type="number" id="batteryPrice" placeholder="السعر (DA)" value="200">
+
+    <hr>
+
+    <p id="selectedLocation">📍 اختر موقعًا من الخريطة</p>
+    <p id="irradiationValue">☀️ الإشعاع الشمسي: غير معروف</p>
+    <button onclick="calculate()">🔍 حساب</button>
+
+    <div id="results"></div>
+  </div>
+
+  <div class="map-container">
+    <h4>🌍 أدخل المنطقة:</h4>
+    <div id="map"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="script.js"></script>
+  <script src="pvgis.js"></script>
+
+</body>
+</html>
