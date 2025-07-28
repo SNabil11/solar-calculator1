@@ -1,35 +1,47 @@
-let map = L.map('map').setView([28, 2], 6);
+let map;
 let selectedLatLng = null;
 let marker = null;
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap'
-}).addTo(map);
-
-map.on('click', async function (e) {
-  selectedLatLng = e.latlng;
-
-  if (marker) map.removeLayer(marker);
-  marker = L.marker(selectedLatLng).addTo(map);
-
-  document.getElementById('selectedLocation').innerText = `📍 الإحداثيات: ${selectedLatLng.lat.toFixed(4)}, ${selectedLatLng.lng.toFixed(4)}`;
-  await getIrradiation(selectedLatLng.lat, selectedLatLng.lng);
+window.addEventListener("load", () => {
+  initMap();
+  setupModeSwitching();
 });
+
+function initMap() {
+  map = L.map('map').setView([28, 2], 6); // الجزائر
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  map.on('click', async function (e) {
+    selectedLatLng = e.latlng;
+
+    if (marker) {
+      marker.setLatLng(selectedLatLng);
+    } else {
+      marker = L.marker(selectedLatLng).addTo(map);
+    }
+
+    document.getElementById('selectedLocation').innerText =
+      `📍 الإحداثيات: ${selectedLatLng.lat.toFixed(4)}, ${selectedLatLng.lng.toFixed(4)}`;
+
+    await getIrradiation(selectedLatLng.lat, selectedLatLng.lng);
+  });
+}
 
 async function getIrradiation(lat, lon) {
   const url = `/api/pvgis?lat=${lat}&lon=${lon}`;
-
   try {
     const res = await fetch(url);
     const data = await res.json();
-    const dailyData = data.outputs.daily;
 
+    const dailyData = data.outputs?.daily;
     if (!dailyData || dailyData.length === 0) {
       document.getElementById("irradiationValue").innerText = "❌ لم يتم العثور على بيانات الإشعاع.";
       return;
     }
 
-    // ابحث عن الحقل الصحيح داخل العنصر الأول
     const sample = dailyData[0];
     const irradiationKey = Object.keys(sample).find(k => k.toLowerCase().includes('g'));
 
@@ -40,7 +52,9 @@ async function getIrradiation(lat, lon) {
 
     const total = dailyData.reduce((sum, d) => sum + (parseFloat(d[irradiationKey]) || 0), 0);
     const averageIrradiation = (total / dailyData.length).toFixed(2);
-    document.getElementById("irradiationValue").innerText = `☀️ الإشعاع الشمسي: ${averageIrradiation} kWh/m²`;
+
+    document.getElementById("irradiationValue").innerText =
+      `☀️ الإشعاع الشمسي: ${averageIrradiation} kWh/m²`;
     document.getElementById("irradiationValue").dataset.value = averageIrradiation;
   } catch (err) {
     console.error(err);
@@ -48,32 +62,35 @@ async function getIrradiation(lat, lon) {
   }
 }
 
-
 function addDevice() {
   const table = document.getElementById("devicesTable");
   const row = table.insertRow();
   row.innerHTML = `
     <td><input type="text" placeholder="جهاز"></td>
-    <td><input type="number"></td>
-    <td><input type="number"></td>
-    <td><input type="number"></td>
+    <td><input type="number" placeholder="واط"></td>
+    <td><input type="number" placeholder="ساعات"></td>
+    <td><input type="number" placeholder="عدد"></td>
   `;
 }
 
-document.querySelectorAll("input[name='inputMode']").forEach(el => {
-  el.addEventListener("change", () => {
-    const mode = document.querySelector("input[name='inputMode']:checked").value;
-    document.getElementById("directInputs").style.display = mode === "direct" ? "block" : "none";
-    document.getElementById("deviceInputs").style.display = mode === "devices" ? "block" : "none";
+function setupModeSwitching() {
+  document.querySelectorAll("input[name='inputMode']").forEach(el => {
+    el.addEventListener("change", () => {
+      const mode = document.querySelector("input[name='inputMode']:checked").value;
+      document.getElementById("directInputs").style.display = mode === "direct" ? "block" : "none";
+      document.getElementById("deviceInputs").style.display = mode === "devices" ? "block" : "none";
+    });
   });
-});
+}
 
 function calculate() {
   let energy = 0;
   const mode = document.querySelector("input[name='inputMode']:checked").value;
 
   if (mode === "direct") {
-    energy = parseFloat(document.getElementById("dailyUsage").value) || (parseFloat(document.getElementById("monthlyUsage").value) / 30) || 0;
+    const daily = parseFloat(document.getElementById("dailyUsage").value);
+    const monthly = parseFloat(document.getElementById("monthlyUsage").value);
+    energy = daily || (monthly ? monthly / 30 : 0);
   } else {
     const rows = document.querySelectorAll("#devicesTable tr:not(:first-child)");
     rows.forEach(row => {
@@ -87,7 +104,7 @@ function calculate() {
   }
 
   const irradiation = parseFloat(document.getElementById("irradiationValue").dataset.value) || 5;
-  const systemVoltage = parseFloat(document.getElementById("systemVoltage").value);
+  const systemVoltage = parseFloat(document.getElementById("systemVoltage").value) || 12;
 
   const panelWatt = parseFloat(document.getElementById("panelWatt").value);
   const panelVoltage = parseFloat(document.getElementById("panelVoltage").value);
